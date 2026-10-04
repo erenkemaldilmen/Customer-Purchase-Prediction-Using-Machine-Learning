@@ -1,7 +1,8 @@
 # React Practice Track
 
-Format: Claude shows a code piece, you read it and answer questions about it
-(what it renders, what happens on click, what's wrong, how to fix it). No writing code.
+Format: Claude shows clean, production-quality code (the kind AI tools produce).
+The goal is to understand it: what it renders, how data flows, what happens
+step by step, and why it is written that way. No bug hunting, no writing code.
 
 Progress: `[ ]` not started · `[~]` in progress · `[x]` done
 

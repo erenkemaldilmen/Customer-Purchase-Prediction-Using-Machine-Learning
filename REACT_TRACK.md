@@ -9,8 +9,8 @@ Progress: `[ ]` not started · `[~]` in progress · `[x]` done
 ## Level 1 — Foundations
 - [x] 1. JSX basics: expressions, attributes, `className`, self-closing tags, fragments
 - [x] 2. Components: function components, naming, composition, returning `null`
-- [~] 3. Props: passing data, destructuring, defaults, `children`, read-only props
-- [ ] 4. Conditional rendering: `&&`, ternary, early return, the `0 &&` trap
+- [x] 3. Props: passing data, destructuring, defaults, `children`, read-only props
+- [~] 4. Conditional rendering: `&&`, ternary, early return, the `0 &&` trap
 - [ ] 5. Lists & keys: `map`, why keys matter, index-as-key problems
 - [ ] 6. Events: handlers, passing vs calling functions, `e.preventDefault`, synthetic events
 

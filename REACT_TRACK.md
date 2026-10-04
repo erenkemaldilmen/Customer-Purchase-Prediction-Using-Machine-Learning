@@ -7,8 +7,8 @@ step by step, and why it is written that way. No bug hunting, no writing code.
 Progress: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ## Level 1 — Foundations
-- [ ] 1. JSX basics: expressions, attributes, `className`, self-closing tags, fragments
-- [ ] 2. Components: function components, naming, composition, returning `null`
+- [x] 1. JSX basics: expressions, attributes, `className`, self-closing tags, fragments
+- [~] 2. Components: function components, naming, composition, returning `null`
 - [ ] 3. Props: passing data, destructuring, defaults, `children`, read-only props
 - [ ] 4. Conditional rendering: `&&`, ternary, early return, the `0 &&` trap
 - [ ] 5. Lists & keys: `map`, why keys matter, index-as-key problems

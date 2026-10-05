@@ -1,0 +1,68 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #1f2328;
+  background: #f6f8fa;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.app header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.hint {
+  color: #59636e;
+}
+
+.scenario {
+  margin-top: 16px;
+  border: 1px solid #d1d9e0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.scenario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  font-weight: 600;
+}
+
+.scenario-output {
+  padding: 14px;
+  border-top: 1px dashed #d1d9e0;
+}
+
+/* Styles used by the lesson components */
+.product-title { margin: 0 0 4px; }
+.sold-out { color: #cf222e; font-weight: 600; }
+.card { border: 1px solid #d1d9e0; border-radius: 8px; padding: 12px; }
+.card--highlight { border-color: #0969da; background: #ddf4ff; }
+.card-footer { margin-top: 8px; }
+.user-card { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+.avatar { border-radius: 50%; background: #d1d9e0; }
+.badge { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #8250df; color: #fff; font-size: 0.75rem; }
+.notice { color: #9a6700; font-weight: 600; }
+.unread { font-weight: 700; }
+.read { color: #59636e; }
+.spinner { color: #59636e; }
+.error { color: #cf222e; }

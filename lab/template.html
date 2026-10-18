@@ -220,6 +220,8 @@ h1 {
 .stage[data-ex="like"] > div > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .stage .cart-demo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 8px; border: 1px dashed var(--line); border-radius: 8px; background: var(--surface); }
 .stage .cart-demo span { flex: 1; color: var(--muted); }
+.stage .scoreboard { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stage .score { flex-basis: 100%; margin: 0 0 4px; font: 700 1.6rem var(--font-display); font-variant-numeric: tabular-nums; }
 .stage .liked { color: var(--stop); border-color: var(--stop); background: var(--stop-soft); }
 .stage .badge { margin-left: auto; font-size: 0.85rem; color: var(--muted); padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
 .stage[data-ex="quick"] > div > div {
@@ -802,6 +804,18 @@ code, .el {
     const a = current;
     current = null;
     if (!a) return;
+    // Updaters React runs while rendering read better just before that render's step.
+    for (let i = 0; i < a.records.length; i++) {
+      const r = a.records[i];
+      if (r.type !== "render") continue;
+      let j = i + 1;
+      while (j < a.records.length && a.records[j].type === "updater" && a.records[j].inst === r.inst) j++;
+      if (j > i + 1) {
+        const moved = a.records.splice(i + 1, j - i - 1);
+        a.records.splice(i, 0, ...moved);
+        i += moved.length;
+      }
+    }
     a.num = actions.length + 1;
     a.segments = [];
     let seg = null;
@@ -919,7 +933,7 @@ code, .el {
         const arg = r.isFn ? "updater function" : show1(r.next);
         text = "<code>" + esc(r.setter) + "(" + esc(arg) + ")</code> is called in <code>" + esc(r.inst.label) + "</code>." + lineBtn(r.line);
         note = r.isFn
-          ? "React will run the updater with the latest <code>" + esc(r.name) + "</code> during the next render."
+          ? "React queues the updater. It will get the latest <code>" + esc(r.name) + "</code>, including earlier updates from this same click."
           : Object.is(r.prev, r.next)
             ? "<code>" + esc(r.name) + "</code> is already " + esc(show1(r.next)) + ", so React can skip the re-render."
             : "<code>" + esc(r.name) + "</code> will change from <b>" + esc(show1(r.prev)) + "</b> to <b>" + esc(show1(r.next)) + "</b>. The screen does not change yet: React schedules a re-render.";

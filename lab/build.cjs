@@ -11,6 +11,12 @@ const dir = __dirname;
 // Newest topic first; the first entry is the default tab.
 const exercises = [
   {
+    id: "score",
+    tab: "Batching · Topic 8",
+    file: "08-score-board.jsx",
+    hint: "Answer the questions in the chat first. Then click each button starting from 0, pressing <b>Reset</b> in between, and compare the steps.",
+  },
+  {
     id: "like",
     tab: "useState · Topic 7",
     file: "07-like-button.jsx",

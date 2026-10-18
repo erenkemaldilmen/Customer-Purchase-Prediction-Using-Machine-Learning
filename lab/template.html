@@ -1,0 +1,1110 @@
+<title>React Event Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: lab bench. Left = the running app, its state and console; right = a step-by-step trace of the last action; code below with live line highlights. */
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --surface-2: #f6f8fa;
+  --fg: #18202b;
+  --muted: #5d6877;
+  --line: #d5dbe3;
+  --accent: #0b6a8a;
+  --accent-soft: #dff0f6;
+  --signal: #b35c00;
+  --signal-soft: #fdf0e1;
+  --ok: #24744a;
+  --ok-soft: #e1f3e8;
+  --stop: #b3302a;
+  --stop-soft: #fbe5e3;
+  --state: #7240b8;
+  --state-soft: #efe6fa;
+  --render: #4d5d73;
+  --render-soft: #e7ecf2;
+  --code-bg: #f7f9fb;
+  --tok-keyword: #8a3ab9;
+  --tok-string: #2b7a3d;
+  --tok-tag: #0b6a8a;
+  --tok-attr: #a3510a;
+  --tok-fn: #2753a8;
+  --tok-comment: #7b8594;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151b;
+    --surface: #181e26;
+    --surface-2: #1e2530;
+    --fg: #e3e8ef;
+    --muted: #97a2b2;
+    --line: #2c3541;
+    --accent: #5cc0e0;
+    --accent-soft: #15323d;
+    --signal: #f0a542;
+    --signal-soft: #3a2a14;
+    --ok: #6cc690;
+    --ok-soft: #173325;
+    --stop: #f17c73;
+    --stop-soft: #3d1c1a;
+    --state: #b892f0;
+    --state-soft: #2c2140;
+    --render: #9fb0c6;
+    --render-soft: #232c38;
+    --code-bg: #141920;
+    --tok-keyword: #c792ea;
+    --tok-string: #8fd18a;
+    --tok-tag: #5cc0e0;
+    --tok-attr: #f0a542;
+    --tok-fn: #82aaff;
+    --tok-comment: #6f7a8a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151b;
+  --surface: #181e26;
+  --surface-2: #1e2530;
+  --fg: #e3e8ef;
+  --muted: #97a2b2;
+  --line: #2c3541;
+  --accent: #5cc0e0;
+  --accent-soft: #15323d;
+  --signal: #f0a542;
+  --signal-soft: #3a2a14;
+  --ok: #6cc690;
+  --ok-soft: #173325;
+  --stop: #f17c73;
+  --stop-soft: #3d1c1a;
+  --state: #b892f0;
+  --state-soft: #2c2140;
+  --render: #9fb0c6;
+  --render-soft: #232c38;
+  --code-bg: #141920;
+  --tok-keyword: #c792ea;
+  --tok-string: #8fd18a;
+  --tok-tag: #5cc0e0;
+  --tok-attr: #f0a542;
+  --tok-fn: #82aaff;
+  --tok-comment: #6f7a8a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 16px;
+}
+header.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.1rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.sub { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab {
+  font: 500 0.875rem/1 var(--font-body);
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+}
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.tab:focus-visible, button:focus-visible, input:focus-visible, .lineref:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.bench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 860px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 16px; min-width: 0; }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-width: 0;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.label {
+  font: 600 0.72rem/1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.panel-body { padding: 14px; }
+.ghost {
+  font: 500 0.8rem/1 var(--font-body);
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.ghost:hover { color: var(--fg); }
+
+/* The running app */
+.stage { padding: 16px; background: var(--surface-2); border-radius: 0 0 10px 10px; }
+.stage form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.stage input {
+  flex: 1 1 180px;
+  min-width: 0;
+  font: 400 0.95rem var(--font-body);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--fg);
+}
+.stage button {
+  font: 500 0.875rem var(--font-body);
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+}
+.stage button:hover { border-color: var(--accent); }
+.stage button[type="submit"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.stage ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.stage .product-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.stage .product-row span { flex: 1; font-weight: 500; }
+.stage[data-ex="like"] > div > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stage .liked { color: var(--stop); border-color: var(--stop); background: var(--stop-soft); }
+.stage .badge { margin-left: auto; font-size: 0.85rem; color: var(--muted); padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+.stage[data-ex="quick"] > div > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.stage[data-ex="quick"] h3 { margin: 0 auto 0 0; font-family: var(--font-display); }
+.stage .flash { animation: flash 0.7s ease-out; }
+@keyframes flash { from { box-shadow: 0 0 0 3px var(--signal); } to { box-shadow: 0 0 0 3px transparent; } }
+
+.hints { margin: 0; padding: 0 14px 14px; color: var(--muted); font-size: 0.875rem; }
+.hints b { color: var(--fg); font-weight: 600; }
+
+/* Console */
+.console {
+  font: 400 0.82rem/1.6 var(--font-mono);
+  background: var(--code-bg);
+  border-radius: 0 0 10px 10px;
+  padding: 10px 14px;
+  min-height: 92px;
+  max-height: 220px;
+  overflow: auto;
+}
+.console .row { display: flex; gap: 10px; }
+.console .n { color: var(--muted); min-width: 2.2em; font-variant-numeric: tabular-nums; }
+.console .empty { color: var(--muted); font-family: var(--font-body); }
+
+/* Trace */
+.trace-empty { color: var(--muted); padding: 6px 0; }
+.trace-empty ol { margin: 8px 0 0; padding-left: 20px; }
+.action-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: step; }
+.step {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  counter-increment: step;
+}
+.step::before {
+  content: counter(step);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 600 0.75rem var(--font-mono);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.step.k-handler::before, .step.k-propcall::before { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.step.k-stop::before, .step.k-reload::before { background: var(--stop-soft); border-color: var(--stop); color: var(--stop); }
+.step.k-prevent::before { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.step.k-log::before { background: var(--signal-soft); border-color: var(--signal); color: var(--signal); }
+.step.k-state::before, .step.k-lazy::before { background: var(--state-soft); border-color: var(--state); color: var(--state); }
+.step.k-render::before { background: var(--render-soft); border-color: var(--render); color: var(--render); }
+.diff { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.diff span {
+  font: 400 0.8rem var(--font-mono);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.diff span.changed { background: var(--state-soft); border-color: var(--state); }
+.diff s { color: var(--muted); }
+.skipnote { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); color: var(--muted); font-size: 0.875rem; }
+
+/* State panel */
+.states { display: grid; gap: 0; }
+.inst {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--line);
+  align-items: center;
+}
+.inst:first-child { border-top: none; }
+.inst-name { font: 600 0.875rem var(--font-mono); }
+.inst-renders { font: 500 0.75rem var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.inst.just-rendered .inst-renders { color: var(--render); font-weight: 600; }
+.inst .vals { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.inst .vals span {
+  font: 400 0.8rem var(--font-mono);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.inst .vals span.changed { background: var(--state-soft); border-color: var(--state); }
+.inst .vals em { font-style: normal; color: var(--muted); font-size: 0.8rem; }
+.step-main { min-width: 0; }
+.step-text { margin: 2px 0 0; }
+.step-note { margin: 2px 0 0; color: var(--muted); font-size: 0.875rem; }
+code, .el {
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 4px;
+  overflow-wrap: anywhere;
+}
+.logline {
+  display: inline-block;
+  font: 400 0.84rem var(--font-mono);
+  background: var(--signal-soft);
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.lineref {
+  font: 500 0.75rem var(--font-mono);
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Bubble path */
+.path {
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.path-head {
+  font: 600 0.7rem/1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--signal);
+  background: var(--signal-soft);
+  padding: 7px 10px;
+}
+.hop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+.hop:first-of-type { border-top: none; }
+.hop .arrow { flex: none; width: 18px; color: var(--signal); font-family: var(--font-mono); text-align: center; }
+.hop .el { flex: 1 1 14ch; min-width: 0; overflow-wrap: break-word; }
+.hop .chip { margin-left: auto; }
+.hop.never { opacity: 0.45; }
+.chip {
+  font: 600 0.7rem/1 var(--font-body);
+  letter-spacing: 0.03em;
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.chip.ran { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.chip.stopped { background: var(--stop-soft); border-color: var(--stop); color: var(--stop); }
+.chip.skipped { color: var(--stop); border-style: dashed; border-color: var(--stop); text-decoration: line-through; }
+
+.history { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.history summary { cursor: pointer; color: var(--muted); font-size: 0.875rem; }
+.history ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.history button {
+  width: 100%;
+  text-align: left;
+  font: 400 0.875rem var(--font-body);
+  background: var(--surface-2);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.history .num { font-family: var(--font-mono); color: var(--muted); margin-right: 8px; font-variant-numeric: tabular-nums; }
+
+/* Code */
+.code {
+  margin: 0;
+  background: var(--code-bg);
+  border-radius: 0 0 10px 10px;
+  padding: 10px 0;
+  overflow-x: auto;
+  font: 400 0.82rem/1.65 var(--font-mono);
+}
+.code .ln {
+  display: grid;
+  grid-template-columns: 3.2em max-content;
+  padding-right: 16px;
+  border-left: 3px solid transparent;
+  min-width: 100%;
+  width: max-content;
+}
+.code .ln > i {
+  font-style: normal;
+  color: var(--tok-comment);
+  text-align: right;
+  padding-right: 14px;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+.code .ln.hl-ran { background: var(--ok-soft); border-left-color: var(--ok); }
+.code .ln.hl-stop { background: var(--stop-soft); border-left-color: var(--stop); }
+.code .ln.hl-prevent { background: var(--accent-soft); border-left-color: var(--accent); }
+.code .ln.hl-state { background: var(--state-soft); border-left-color: var(--state); }
+.code .ln.hl-render { background: var(--render-soft); border-left-color: var(--render); }
+.code .ln.hl-log { background: var(--signal-soft); border-left-color: var(--signal); }
+.code .ln.pulse { animation: pulse 1.2s ease-out; }
+@keyframes pulse { 0% { box-shadow: inset 0 0 0 2px var(--signal); } 100% { box-shadow: inset 0 0 0 2px transparent; } }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.78rem; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.legend .l-ran::before { background: var(--ok); }
+.legend .l-stop::before { background: var(--stop); }
+.legend .l-prevent::before { background: var(--accent); }
+.legend .l-state::before { background: var(--state); }
+.legend .l-render::before { background: var(--render); }
+.legend .l-log::before { background: var(--signal); }
+.token.comment { color: var(--tok-comment); font-style: italic; }
+.token.keyword { color: var(--tok-keyword); }
+.token.string, .token.attr-value { color: var(--tok-string); }
+.token.tag, .token.class-name { color: var(--tok-tag); }
+.token.attr-name { color: var(--tok-attr); }
+.token.function { color: var(--tok-fn); }
+.token.punctuation, .token.operator { color: var(--muted); }
+.token.attr-value .punctuation { color: var(--tok-string); }
+
+.error { color: var(--stop); padding: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  .stage .flash, .code .ln.pulse { animation: none; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>React Event Lab</h1>
+      <p class="sub">Use the app on the left. On the right, every click, handler, state change, re-render and console line is traced step by step, and the lines that ran light up in the code.</p>
+    </div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+  </header>
+
+  <div class="bench">
+    <div class="col">
+      <section class="panel" aria-labelledby="app-label">
+        <div class="panel-head"><span class="label" id="app-label">Live app</span><button type="button" class="ghost" id="reset">Reset</button></div>
+        <p class="hints" id="hints"></p>
+        <div class="stage" id="stage"></div>
+      </section>
+      <section class="panel" aria-labelledby="state-label">
+        <div class="panel-head"><span class="label" id="state-label">State &amp; renders</span><span class="label">per component</span></div>
+        <div class="states" id="states"></div>
+      </section>
+      <section class="panel" aria-labelledby="console-label">
+        <div class="panel-head"><span class="label" id="console-label">Console</span><span class="label" id="console-count"></span></div>
+        <div class="console" id="console" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <section class="panel" aria-labelledby="trace-label">
+      <div class="panel-head"><span class="label" id="trace-label">What just happened</span><span class="label" id="trace-num"></span></div>
+      <div class="panel-body" id="trace"></div>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="code-label">
+    <div class="panel-head">
+      <span class="label" id="code-label">Code</span>
+      <div class="legend"><span class="l-ran">handler ran</span><span class="l-state">state set</span><span class="l-render">re-rendered</span><span class="l-log">console.log</span><span class="l-stop">stopPropagation</span><span class="l-prevent">preventDefault</span></div>
+    </div>
+    <pre class="code" id="code"></pre>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+/*__EXERCISES__*/
+</script>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  if (!window.React || !window.ReactDOM) {
+    $("stage").innerHTML = '<p class="error">React could not load. Check your connection and reload the page.</p>';
+    return;
+  }
+
+  let ex = null;          // active exercise
+  let root = null;        // React root
+  let rootEl = null;      // container React renders into
+  let current = null;     // action being recorded
+  let actions = [];       // finished actions, newest first
+  let shown = null;       // action shown in the trace
+  let logCount = 0;
+  let atLine = null;      // source line of the setter or console.log call running right now
+  let instSeq = {};       // per-component instance counters
+  let instances = [];     // component instances, in mount order
+  const renderStack = []; // instance currently rendering
+
+  /* ---------- recording ---------- */
+  function rec(r) {
+    if (!current) {
+      current = { records: [] };
+      setTimeout(finish, 0);
+    }
+    current.records.push(r);
+  }
+
+  function describe(node) {
+    if (!node || node.nodeType !== 1) return "";
+    const tag = node.tagName.toLowerCase();
+    let s = "<" + tag;
+    const cls = typeof node.className === "string" ? node.className.split(" ").filter((c) => c && c !== "flash").join(" ") : "";
+    if (cls) s += ' className="' + cls + '"';
+    if (tag === "button" && node.getAttribute("type")) s += ' type="' + node.getAttribute("type") + '"';
+    if (tag === "input" && node.name) s += ' name="' + node.name + '"';
+    s += ">";
+    const leafText = ["button", "span", "h3", "h2", "strong"].includes(tag) ? node.textContent.trim() : "";
+    return leafText ? s + " “" + leafText + "”" : s;
+  }
+
+  function rowContext(node) {
+    const li = node && node.closest ? node.closest("li") : null;
+    const name = li && li.querySelector("span");
+    return name ? "in the “" + name.textContent.trim() + "” row" : "";
+  }
+
+  function pathOf(target) {
+    const out = [];
+    let n = target && target.nodeType === 1 ? target : target && target.parentElement;
+    while (n && n !== rootEl) {
+      out.push({
+        node: n,
+        label: describe(n),
+        on: (n.dataset.simOn || "").split(" ").filter(Boolean),
+        line: Number(n.dataset.simLine) || null,
+      });
+      n = n.parentElement;
+    }
+    return out;
+  }
+
+  function fmt(v) {
+    if (typeof v === "string") return v;
+    try { return JSON.stringify(v); } catch (e) { return String(v); }
+  }
+
+  /* Wrap handlers on DOM elements so the trace knows which ones ran. */
+  function wrapHost(key, fn, line) {
+    const evt = key.slice(2).toLowerCase();
+    return function (e) {
+      if (e && !e.__simPatched) {
+        const stop = e.stopPropagation;
+        const prevent = e.preventDefault;
+        e.stopPropagation = function () {
+          rec({ type: "stop", node: e.currentTarget, line: e.__simLine });
+          return stop.apply(this, arguments);
+        };
+        e.preventDefault = function () {
+          rec({ type: "prevent", node: e.currentTarget, evt: e.type, line: e.__simLine });
+          return prevent.apply(this, arguments);
+        };
+        e.__simPatched = true;
+      }
+      if (e) e.__simLine = line;
+      rec({ type: "handler", key, evt, node: e && e.currentTarget, label: describe(e && e.currentTarget), line });
+      return fn.apply(this, arguments);
+    };
+  }
+
+  /* Wrap function props passed to components (onAddToCart, onSearch...). */
+  function wrapProp(comp, key, fn, line) {
+    return function () {
+      const args = Array.prototype.slice.call(arguments);
+      rec({ type: "propcall", comp, key, fnName: fn.name, args, line });
+      return fn.apply(this, arguments);
+    };
+  }
+
+  const isHandler = (k, v) => /^on[A-Z]/.test(k) && typeof v === "function";
+
+  function jsxDEV(type, props, key, isStatic, source) {
+    const line = source ? source.lineNumber : null;
+    const compName = typeof type === "function" ? type.name || "Component" : null;
+    const p = {};
+    const handlers = [];
+    for (const k in props) {
+      if (k === "children") continue;
+      const v = props[k];
+      if (isHandler(k, v)) {
+        if (typeof type === "string") {
+          p[k] = wrapHost(k, v, line);
+          handlers.push(k.slice(2).toLowerCase());
+        } else {
+          p[k] = wrapProp(compName, k, v, line);
+        }
+      } else {
+        p[k] = v;
+      }
+    }
+    if (typeof type === "string") {
+      if (handlers.length) p["data-sim-on"] = handlers.join(" ");
+      if (line) p["data-sim-line"] = line;
+    }
+    if (key !== undefined) p.key = key;
+    const t = compName ? wrapComp(type) : type;
+    const children = props ? props.children : undefined;
+    if (isStatic && Array.isArray(children)) return React.createElement(t, p, ...children);
+    if (children !== undefined) p.children = children;
+    return React.createElement(t, p);
+  }
+
+  /* Wrap each component so the trace sees every render and owns an instance record. */
+  const wrapped = new Map();
+  function wrapComp(C) {
+    if (wrapped.has(C)) return wrapped.get(C);
+    const name = C.name || "Component";
+    function Traced(props) {
+      const idRef = React.useRef(null);
+      if (idRef.current === null) {
+        instSeq[name] = (instSeq[name] || 0) + 1;
+        idRef.current = { comp: name, label: name + " #" + instSeq[name], renders: 0, states: [], hook: 0, mounted: true };
+        instances.push(idRef.current);
+      }
+      const inst = idRef.current;
+      React.useEffect(() => () => { inst.mounted = false; }, []);
+      inst.renders += 1;
+      inst.hook = 0;
+      const r = { type: "render", inst, n: inst.renders, before: inst.states.map((x) => ({ ...x })), after: null };
+      rec(r);
+      renderStack.push(inst);
+      try {
+        return C(props);
+      } finally {
+        renderStack.pop();
+        r.after = inst.states.map((x) => ({ ...x }));
+      }
+    }
+    Traced.displayName = name;
+    wrapped.set(C, Traced);
+    return Traced;
+  }
+
+  /* useState that reports every set call, updater run and lazy initializer. */
+  function useStateTraced(init) {
+    const inst = renderStack[renderStack.length - 1] || null;
+    const idx = inst ? inst.hook++ : 0;
+    const meta = inst && ex.stateNames[inst.comp] ? ex.stateNames[inst.comp][idx] : null;
+    const name = meta ? meta.name : "state" + idx;
+    const box = React.useRef(null);
+    const first = box.current === null;
+    let initArg = init;
+    if (typeof init === "function") {
+      if (first) initArg = () => { const v = init(); rec({ type: "lazyInit", inst, name, value: v, line: meta && meta.line }); return v; };
+      else rec({ type: "lazySkip", inst, name, line: meta && meta.line });
+    }
+    const pair = React.useState(initArg);
+    if (first) box.current = { inst, name, setter: meta && meta.setter, line: meta && meta.line };
+    const b = box.current;
+    b.value = pair[0];
+    b.set = pair[1];
+    if (!b.traced) {
+      b.traced = function (next) {
+        const isFn = typeof next === "function";
+        rec({ type: "setState", inst: b.inst, name: b.name, setter: b.setter || "set", prev: b.value, next, isFn, line: atLine });
+        if (isFn) {
+          return b.set((prev) => {
+            const out = next(prev);
+            rec({ type: "updater", inst: b.inst, name: b.name, prev, next: out });
+            return out;
+          });
+        }
+        return b.set(next);
+      };
+    }
+    if (inst) inst.states[idx] = { name, value: pair[0] };
+    return [pair[0], b.traced];
+  }
+
+  const reactShim = Object.assign({}, React, { useState: useStateTraced });
+  const runtime = { jsxDEV, Fragment: React.Fragment };
+  const requireShim = (name) => (name === "react" ? reactShim : runtime);
+
+  /* Marks the source line of the call that is running (added by the build step). */
+  function at(line, fn) {
+    return function () {
+      const outer = atLine;
+      atLine = line;
+      try { return fn.apply(this, arguments); } finally { atLine = outer; }
+    };
+  }
+
+  /* console.log goes to the page console and the trace. */
+  const nativeLog = console.log.bind(console);
+  console.log = function () {
+    const text = Array.prototype.map.call(arguments, fmt).join(" ");
+    rec({ type: "log", text, line: atLine });
+    appendConsole(text);
+    nativeLog.apply(console, arguments);
+  };
+
+  function appendConsole(text) {
+    const box = $("console");
+    const empty = box.querySelector(".empty");
+    if (empty) empty.remove();
+    logCount += 1;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = '<span class="n">' + logCount + '</span><span>' + esc(text) + "</span>";
+    box.appendChild(row);
+    box.scrollTop = box.scrollHeight;
+    $("console-count").textContent = logCount + (logCount === 1 ? " line" : " lines");
+  }
+
+  /* Native listeners see the real event before React does. */
+  function onNative(e) {
+    if (!rootEl || !rootEl.contains(e.target)) return;
+    if (e.type === "keydown") {
+      if (e.key !== "Enter") return;
+      rec({ type: "key", label: describe(e.target) });
+      return;
+    }
+    rec({ type: "native", evt: e.type, target: e.target, label: describe(e.target), detail: e.detail, ctx: rowContext(e.target), path: pathOf(e.target) });
+    const flashEl = e.target.nodeType === 1 ? e.target : e.target.parentElement;
+    if (flashEl && e.type === "click") {
+      flashEl.classList.remove("flash");
+      void flashEl.offsetWidth;
+      flashEl.classList.add("flash");
+    }
+  }
+  const stage = $("stage");
+  stage.addEventListener("click", onNative, true);
+  stage.addEventListener("keydown", onNative, true);
+  stage.addEventListener("submit", onNative, true);
+  /* Safety net: the lab never lets a form reload the page. */
+  window.addEventListener("submit", (e) => {
+    if (!e.defaultPrevented) { e.preventDefault(); rec({ type: "reload" }); }
+  });
+
+  /* ---------- turning records into a story ---------- */
+  function propLine(start, needle) {
+    if (!start || !ex) return start;
+    for (let i = start - 1; i < Math.min(ex.lines.length, start + 8); i++) {
+      if (ex.lines[i].includes(needle)) return i + 1;
+    }
+    const anywhere = ex.lines.findIndex((l) => l.includes(needle));
+    return anywhere > -1 ? anywhere + 1 : start;
+  }
+
+  function defLine(fnName) {
+    if (!fnName || !ex) return null;
+    const i = ex.lines.findIndex((l) => l.includes("function " + fnName + "("));
+    return i > -1 ? i + 1 : null;
+  }
+
+  function finish() {
+    const a = current;
+    current = null;
+    if (!a) return;
+    a.num = actions.length + 1;
+    a.segments = [];
+    let seg = null;
+    for (const r of a.records) {
+      if (r.type === "native") { seg = { native: r, ran: new Set(), stopNode: null }; a.segments.push(seg); r.seg = seg; }
+      else if (seg && r.type === "handler") seg.ran.add(r.node);
+      else if (seg && r.type === "stop") seg.stopNode = r.node;
+    }
+    a.title = titleFor(a);
+    a.lines = linesFor(a);
+    const rendered = new Set(a.records.filter((r) => r.type === "render").map((r) => r.inst));
+    a.rendered = rendered;
+    a.notRendered = a.mount || !rendered.size ? [] : instances.filter((i) => i.mounted && !rendered.has(i)).map((i) => i.label);
+    actions.unshift(a);
+    show(a);
+  }
+
+  function titleFor(a) {
+    if (a.mount) return "First render: the page loads";
+    const key = a.records.find((r) => r.type === "key");
+    if (key) return "You pressed Enter in " + key.label;
+    const n = a.records.find((r) => r.type === "native");
+    if (n) return "You clicked " + n.label + (n.ctx ? " " + n.ctx : "");
+    return "Something ran";
+  }
+
+  function linesFor(a) {
+    const out = [];
+    for (const r of a.records) {
+      if (r.type === "handler") out.push({ line: propLine(r.line, r.key + "="), kind: "ran" });
+      if (r.type === "propcall") {
+        out.push({ line: propLine(r.line, r.key + "="), kind: "ran" });
+        const d = defLine(r.fnName);
+        if (d) out.push({ line: d, kind: "ran" });
+      }
+      if (r.type === "stop") out.push({ line: propLine(r.line, "stopPropagation"), kind: "stop" });
+      if (r.type === "prevent") out.push({ line: propLine(r.line, "preventDefault"), kind: "prevent" });
+      if (r.type === "render") { const d = defLine(r.inst.comp); if (d) out.push({ line: d, kind: "render" }); }
+      if (r.type === "lazyInit" && r.line) out.push({ line: r.line, kind: "state" });
+      if (r.type === "setState" && r.line) out.push({ line: r.line, kind: "state" });
+      if (r.type === "log" && r.line) out.push({ line: r.line, kind: "log" });
+    }
+    return out;
+  }
+
+  function lineBtn(line) {
+    return line ? ' <button type="button" class="lineref" data-line="' + line + '">line ' + line + "</button>" : "";
+  }
+
+  function pathHtml(seg) {
+    const evt = seg.native.evt;
+    const handlerName = "on" + evt.charAt(0).toUpperCase() + evt.slice(1);
+    let stoppedAt = -1;
+    const hops = seg.native.path.map((h, i) => {
+      const has = h.on.includes(evt);
+      const ran = seg.ran.has(h.node);
+      let chip;
+      if (ran && seg.stopNode === h.node) { chip = '<span class="chip stopped">' + handlerName + " ran, then stopped</span>"; stoppedAt = i; }
+      else if (ran) chip = '<span class="chip ran">' + handlerName + " ran</span>";
+      else if (has && stoppedAt > -1) chip = '<span class="chip skipped">' + handlerName + " skipped</span>";
+      else if (has) chip = '<span class="chip">' + handlerName + " did not run</span>";
+      else chip = '<span class="chip">no ' + handlerName + "</span>";
+      const never = stoppedAt > -1 && i > stoppedAt;
+      const arrow = i === 0 ? "●" : "↑";
+      return '<div class="hop' + (never ? " never" : "") + '"><span class="arrow" aria-hidden="true">' + arrow + '</span><span class="el">' + esc(h.label) + "</span>" + chip + "</div>";
+    });
+    const head = evt === "click" ? "Bubbling path: starts at the clicked element, then goes up" : "Bubbling path of the " + evt + " event";
+    return '<div class="path"><div class="path-head">' + head + "</div>" + hops.join("") + "</div>";
+  }
+
+  function stepsHtml(a) {
+    const items = [];
+    let lastWasKey = false;
+    for (const r of a.records) {
+      let cls = "", text = "", note = "";
+      if (r.type === "key") {
+        text = "You pressed <b>Enter</b> inside <span class=\"el\">" + esc(r.label) + "</span>.";
+        note = "Inside a form, Enter counts as clicking the form's submit button.";
+        cls = "k-native";
+      } else if (r.type === "native" && r.evt === "click") {
+        text = lastWasKey
+          ? "The browser clicks <span class=\"el\">" + esc(r.label) + "</span> for you."
+          : "The click lands on <span class=\"el\">" + esc(r.label) + "</span>.";
+        note = "The click starts at that element and bubbles up through every parent. Each parent with an onClick hears it, child first.";
+        cls = "k-native";
+        items.push(stepLi(cls, text, note, pathHtml(r.seg)));
+        lastWasKey = false;
+        continue;
+      } else if (r.type === "native") {
+        text = "The browser fires a <b>" + esc(r.evt) + "</b> event on <span class=\"el\">" + esc(r.label) + "</span>.";
+        note = r.evt === "submit" ? "A form's submit button (or Enter) triggers this. Normally the browser would now send the form and reload the page." : "";
+        cls = "k-native";
+        items.push(stepLi(cls, text, note, pathHtml(r.seg)));
+        lastWasKey = false;
+        continue;
+      } else if (r.type === "handler") {
+        text = "<span class=\"el\">" + esc(r.label) + "</span> has <code>" + esc(r.key) + "</code>, so its function runs." + lineBtn(propLine(r.line, r.key + "="));
+        cls = "k-handler";
+      } else if (r.type === "propcall") {
+        const fnName = r.fnName && r.fnName !== r.key ? r.fnName : "";
+        text = "<code>" + esc(r.comp) + "</code> calls its prop <code>" + esc(r.key) + "(" + r.args.map((x) => esc(JSON.stringify(x))).join(", ") + ")</code>." + lineBtn(propLine(r.line, r.key + "="));
+        note = fnName ? "That prop is the parent's <code>" + esc(fnName) + "</code> function" + lineBtn(defLine(fnName)) + ", passed down as a prop. This is how the event reaches the parent." : "";
+        cls = "k-propcall";
+      } else if (r.type === "stop") {
+        text = "<code>e.stopPropagation()</code> is called. The " + "bubble stops here, so parents above never hear this event." + lineBtn(propLine(r.line, "stopPropagation"));
+        cls = "k-stop";
+      } else if (r.type === "prevent") {
+        text = "<code>e.preventDefault()</code> is called." + lineBtn(propLine(r.line, "preventDefault"));
+        note = r.evt === "submit" ? "The browser does not send the form or reload the page. JavaScript handles it instead." : "The browser skips its default action for this event.";
+        cls = "k-prevent";
+      } else if (r.type === "log") {
+        text = "Console prints:" + lineBtn(r.line) + "<br><span class=\"logline\">" + esc(r.text) + "</span>";
+        cls = "k-log";
+      } else if (r.type === "setState") {
+        const arg = r.isFn ? "updater function" : show1(r.next);
+        text = "<code>" + esc(r.setter) + "(" + esc(arg) + ")</code> is called in <code>" + esc(r.inst.label) + "</code>." + lineBtn(r.line);
+        note = r.isFn
+          ? "React will run the updater with the latest <code>" + esc(r.name) + "</code> during the next render."
+          : Object.is(r.prev, r.next)
+            ? "<code>" + esc(r.name) + "</code> is already " + esc(show1(r.next)) + ", so React can skip the re-render."
+            : "<code>" + esc(r.name) + "</code> will change from <b>" + esc(show1(r.prev)) + "</b> to <b>" + esc(show1(r.next)) + "</b>. The screen does not change yet: React schedules a re-render.";
+        cls = "k-state";
+      } else if (r.type === "updater") {
+        text = "React runs the updater for <code>" + esc(r.name) + "</code>: <b>" + esc(show1(r.prev)) + "</b> → <b>" + esc(show1(r.next)) + "</b>.";
+        cls = "k-state";
+      } else if (r.type === "lazyInit") {
+        text = "<code>" + esc(r.inst.label) + "</code>'s <code>useState</code> got a function, so React calls it now to get the starting value of <code>" + esc(r.name) + "</code>: <b>" + esc(show1(r.value)) + "</b>." + lineBtn(r.line);
+        note = "This only happens on the first render. Later renders skip the function.";
+        cls = "k-lazy";
+      } else if (r.type === "lazySkip") {
+        text = "React skips <code>" + esc(r.inst.label) + "</code>'s initializer function for <code>" + esc(r.name) + "</code>. It already has a value." + lineBtn(r.line);
+        cls = "k-lazy";
+      } else if (r.type === "render") {
+        const firstTime = r.n === 1;
+        text = "<code>" + esc(r.inst.label) + "</code> " + (firstTime ? "renders for the first time." : "re-renders (render #" + r.n + ").") + lineBtn(defLine(r.inst.comp));
+        note = firstTime ? "" : "React calls the " + esc(r.inst.comp) + " function again from the top, now with the new state.";
+        items.push(stepLi("k-render", text, note, diffHtml(r)));
+        lastWasKey = false;
+        continue;
+      } else if (r.type === "reload") {
+        text = "Nothing called <code>preventDefault()</code>, so the browser would reload the page now. This lab blocks the reload so you can see the trace.";
+        cls = "k-reload";
+      }
+      lastWasKey = r.type === "key";
+      if (text) items.push(stepLi(cls, text, note, ""));
+    }
+    let tail = "";
+    if (a.notRendered && a.notRendered.length) {
+      tail = '<p class="skipnote">Did not re-render: ' + a.notRendered.map((l) => "<code>" + esc(l) + "</code>").join(", ") + ". Only the component whose state changed renders again, plus anything inside it.</p>";
+    }
+    return '<ol class="steps">' + items.join("") + "</ol>" + tail;
+  }
+
+  function show1(v) {
+    if (typeof v === "string") return JSON.stringify(v);
+    if (typeof v === "function") return "function";
+    try { return JSON.stringify(v); } catch (e) { return String(v); }
+  }
+
+  function diffHtml(r) {
+    if (!r.after || !r.after.length) return "";
+    const parts = r.after.map((st, i) => {
+      const old = r.before[i];
+      if (r.n > 1 && old && !Object.is(old.value, st.value)) {
+        return '<span class="changed">' + esc(st.name) + ": <s>" + esc(show1(old.value)) + "</s> → " + esc(show1(st.value)) + "</span>";
+      }
+      return "<span>" + esc(st.name) + ": " + esc(show1(st.value)) + "</span>";
+    });
+    return '<div class="diff">' + parts.join("") + "</div>";
+  }
+
+  function renderStates(a) {
+    const box = $("states");
+    const live = instances.filter((i) => i.mounted);
+    if (!live.length) { box.innerHTML = '<div class="inst"><span class="inst-renders">Nothing rendered yet.</span></div>'; return; }
+    const changed = new Map();
+    if (a && !a.mount) {
+      for (const r of a.records) {
+        if (r.type !== "render" || r.n < 2) continue;
+        r.after.forEach((st, i) => { if (r.before[i] && !Object.is(r.before[i].value, st.value)) changed.set(r.inst.label + ":" + st.name, true); });
+      }
+    }
+    box.innerHTML = live.map((i) => {
+      const vals = i.states.length
+        ? i.states.map((st) => '<span class="' + (changed.has(i.label + ":" + st.name) ? "changed" : "") + '">' + esc(st.name) + " = " + esc(show1(st.value)) + "</span>").join("")
+        : "<em>no state</em>";
+      const just = a && a.rendered && a.rendered.has(i) && !a.mount;
+      return '<div class="inst' + (just ? " just-rendered" : "") + '"><span class="inst-name">' + esc(i.label) + '</span><span class="inst-renders">' + i.renders + (i.renders === 1 ? " render" : " renders") + (just ? " · just now" : "") + '</span><div class="vals">' + vals + "</div></div>";
+    }).join("");
+  }
+
+  function stepLi(cls, text, note, extra) {
+    return '<li class="step ' + cls + '"><div class="step-main"><p class="step-text">' + text + "</p>" + (note ? '<p class="step-note">' + note + "</p>" : "") + extra + "</div></li>";
+  }
+
+  function show(a) {
+    shown = a;
+    const box = $("trace");
+    if (!a) {
+      $("trace-num").textContent = "";
+      box.innerHTML = '<div class="trace-empty">Nothing yet. Try one of these in the live app:<ol>' + (ex.tries || []).map((t) => "<li>" + t + "</li>").join("") + "</ol></div>";
+      highlight([]);
+      return;
+    }
+    $("trace-num").textContent = "Action " + a.num;
+    let html = '<h2 class="action-title">' + esc(a.title) + "</h2>" + stepsHtml(a);
+    if (actions.length > 1) {
+      html += '<details class="history"' + (a !== actions[0] ? " open" : "") + "><summary>Earlier actions (" + (actions.length - 1) + ")</summary><ul>" +
+        actions.filter((x) => x !== a).map((x) => '<li><button type="button" data-action="' + x.num + '"><span class="num">#' + x.num + "</span>" + esc(x.title) + "</button></li>").join("") +
+        "</ul></details>";
+    }
+    box.innerHTML = html;
+    highlight(a.lines);
+    renderStates(a === actions[0] ? a : null);
+  }
+
+  function highlight(list) {
+    const code = $("code");
+    code.querySelectorAll(".ln").forEach((el) => el.classList.remove("hl-ran", "hl-stop", "hl-prevent", "hl-state", "hl-render", "hl-log"));
+    for (const { line, kind } of list) {
+      const el = code.querySelector('.ln[data-n="' + line + '"]');
+      if (el) el.classList.add("hl-" + kind);
+    }
+  }
+
+  $("trace").addEventListener("click", (e) => {
+    const ref = e.target.closest(".lineref");
+    if (ref) {
+      const el = $("code").querySelector('.ln[data-n="' + ref.dataset.line + '"]');
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+        el.classList.remove("pulse");
+        void el.offsetWidth;
+        el.classList.add("pulse");
+      }
+      return;
+    }
+    const past = e.target.closest("[data-action]");
+    if (past) show(actions.find((x) => x.num === Number(past.dataset.action)));
+  });
+
+  /* ---------- exercises ---------- */
+  function load(id) {
+    ex = EXERCISES.find((x) => x.id === id) || EXERCISES[0];
+    document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.id === ex.id)));
+    $("hints").innerHTML = ex.hint;
+    $("code").innerHTML = ex.html.map((h, i) => '<span class="ln" data-n="' + (i + 1) + '"><i>' + (i + 1) + "</i><span>" + (h || " ") + "</span></span>").join("");
+    mount();
+    try { localStorage.setItem("event-lab-tab", ex.id); } catch (e) {}
+  }
+
+  class LabBoundary extends React.Component {
+    constructor(props) { super(props); this.state = { error: null }; }
+    static getDerivedStateFromError(error) { return { error }; }
+    render() {
+      if (this.state.error) return React.createElement("p", { className: "error" }, "This example crashed: " + this.state.error.message);
+      return this.props.children;
+    }
+  }
+
+  function mount() {
+    if (root) root.unmount();
+    actions = [];
+    current = null;
+    logCount = 0;
+    instSeq = {};
+    instances = [];
+    if (ex.seedStorage) {
+      try {
+        for (const k in ex.seedStorage) localStorage.setItem(k, JSON.stringify(ex.seedStorage[k]));
+      } catch (e) {}
+    }
+    $("console").innerHTML = '<div class="empty">console.log output shows up here.</div>';
+    $("console-count").textContent = "";
+    stage.innerHTML = "";
+    stage.dataset.ex = ex.id;
+    rootEl = document.createElement("div");
+    stage.appendChild(rootEl);
+    root = ReactDOM.createRoot(rootEl);
+    current = { records: [], mount: true };
+    try {
+      const app = ex.mount(requireShim, at);
+      ReactDOM.flushSync(() => root.render(React.createElement(LabBoundary, null, app)));
+    } catch (err) {
+      stage.innerHTML = '<p class="error">This example failed to start: ' + esc(err.message) + "</p>";
+    }
+    finish();
+  }
+
+  $("reset").addEventListener("click", mount);
+
+  const tabs = $("tabs");
+  for (const x of EXERCISES) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tab";
+    b.setAttribute("role", "tab");
+    b.dataset.id = x.id;
+    b.textContent = x.tab;
+    b.addEventListener("click", () => load(x.id));
+    tabs.appendChild(b);
+  }
+
+  let start = EXERCISES[0].id;
+  try { start = localStorage.getItem("event-lab-tab") || start; } catch (e) {}
+  load(start);
+})();
+</script>

@@ -18,6 +18,13 @@ const exercises = [
     seedStorage: { cart: ["shoe", "hat"] },
   },
   {
+    id: "lazy",
+    tab: "Lazy vs eager · Topic 7",
+    file: "07-lazy-init.jsx",
+    hint: "Click each <b>Re-render</b> button a few times and watch the <b>Console</b>. Both boxes start the same, but only one reads the cart again on every render.",
+    seedStorage: { cart: ["shoe", "hat"] },
+  },
+  {
     id: "shop",
     tab: "Shop · Topic 6",
     file: "06-shop.jsx",

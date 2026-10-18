@@ -12,10 +12,10 @@ Progress: `[ ]` not started · `[~]` in progress · `[x]` done
 - [x] 3. Props: passing data, destructuring, defaults, `children`, read-only props
 - [x] 4. Conditional rendering: `&&`, ternary, early return, the `0 &&` trap
 - [x] 5. Lists & keys: `map`, why keys matter, index-as-key problems
-- [~] 6. Events: handlers, passing vs calling functions, `e.preventDefault`, synthetic events
+- [x] 6. Events: handlers, passing vs calling functions, `e.preventDefault`, synthetic events
 
 ## Level 2 — State & Rendering
-- [ ] 7. `useState`: initial value, setter, lazy initializer
+- [~] 7. `useState`: initial value, setter, lazy initializer
 - [ ] 8. State updates are async/batched: stale values, functional updates `setX(prev => ...)`
 - [ ] 9. Immutability: updating objects and arrays in state
 - [ ] 10. Render cycle: when components re-render, render vs commit, pure rendering

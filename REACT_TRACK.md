@@ -16,8 +16,8 @@ Progress: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ## Level 2 — State & Rendering
 - [x] 7. `useState`: initial value, setter, lazy initializer
-- [~] 8. State updates are async/batched: stale values, functional updates `setX(prev => ...)`
-- [ ] 9. Immutability: updating objects and arrays in state
+- [x] 8. State updates are async/batched: stale values, functional updates `setX(prev => ...)`
+- [~] 9. Immutability: updating objects and arrays in state
 - [ ] 10. Render cycle: when components re-render, render vs commit, pure rendering
 - [ ] 11. Controlled vs uncontrolled inputs, forms
 - [ ] 12. Lifting state up & single source of truth

@@ -11,6 +11,12 @@ const dir = __dirname;
 // Newest topic first; the first entry is the default tab.
 const exercises = [
   {
+    id: "todos",
+    tab: "Immutability · Topic 9",
+    file: "09-todo-list.jsx",
+    hint: "Answer the questions in the chat first. Then try <b>Add task</b>, tick a checkbox, <b>Remove</b>, and finally <b>Add with push</b> followed by <b>Add task</b>.",
+  },
+  {
     id: "score",
     tab: "Batching · Topic 8",
     file: "08-score-board.jsx",

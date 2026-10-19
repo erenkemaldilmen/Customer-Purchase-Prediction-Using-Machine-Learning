@@ -222,6 +222,11 @@ h1 {
 .stage .cart-demo span { flex: 1; color: var(--muted); }
 .stage .scoreboard { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .stage .score { flex-basis: 100%; margin: 0 0 4px; font: 700 1.6rem var(--font-display); font-variant-numeric: tabular-nums; }
+.stage .todos ul { margin-bottom: 12px; }
+.stage .todos li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; background: var(--surface); }
+.stage .todos label { flex: 1; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.stage .todos li.done label { color: var(--muted); text-decoration: line-through; }
+.stage .todos > button { margin-right: 6px; }
 .stage .liked { color: var(--stop); border-color: var(--stop); background: var(--stop-soft); }
 .stage .badge { margin-left: auto; font-size: 0.85rem; color: var(--muted); padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
 .stage[data-ex="quick"] > div > div {
@@ -301,6 +306,16 @@ h1 {
 }
 .diff span.changed { background: var(--state-soft); border-color: var(--state); }
 .diff s { color: var(--muted); }
+.adiff { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 3px; font: 400 0.78rem/1.5 var(--font-mono); }
+.adiff li { padding: 2px 8px; border-radius: 4px; overflow-wrap: anywhere; }
+.adiff b { display: inline-block; width: 1.1em; }
+.adiff .add { background: var(--ok-soft); color: var(--fg); }
+.adiff .add b { color: var(--ok); }
+.adiff .del { background: var(--stop-soft); color: var(--fg); }
+.adiff .del b { color: var(--stop); }
+.adiff .chg { background: var(--state-soft); color: var(--fg); }
+.adiff .chg b { color: var(--state); }
+.adiff .same { color: var(--muted); }
 .skipnote { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); color: var(--muted); font-size: 0.875rem; }
 
 /* State panel */
@@ -327,6 +342,7 @@ h1 {
   overflow-wrap: anywhere;
 }
 .inst .vals span.changed { background: var(--state-soft); border-color: var(--state); }
+.inst .vals span.block { flex-basis: 100%; white-space: pre-wrap; }
 .inst .vals em { font-style: normal; color: var(--muted); font-size: 0.8rem; }
 .step-main { min-width: 0; }
 .step-text { margin: 2px 0 0; }
@@ -820,8 +836,8 @@ code, .el {
     a.segments = [];
     let seg = null;
     for (const r of a.records) {
-      if (r.type === "native") { seg = { native: r, ran: new Set(), stopNode: null }; a.segments.push(seg); r.seg = seg; }
-      else if (seg && r.type === "handler") seg.ran.add(r.node);
+      if (r.type === "native") { seg = { native: r, ran: new Map(), stopNode: null }; a.segments.push(seg); r.seg = seg; }
+      else if (seg && r.type === "handler") seg.ran.set(r.node, r.key);
       else if (seg && r.type === "stop") seg.stopNode = r.node;
     }
     a.title = titleFor(a);
@@ -873,8 +889,9 @@ code, .el {
       const has = h.on.includes(evt);
       const ran = seg.ran.has(h.node);
       let chip;
-      if (ran && seg.stopNode === h.node) { chip = '<span class="chip stopped">' + handlerName + " ran, then stopped</span>"; stoppedAt = i; }
-      else if (ran) chip = '<span class="chip ran">' + handlerName + " ran</span>";
+      const ranKey = ran ? seg.ran.get(h.node) : handlerName;
+      if (ran && seg.stopNode === h.node) { chip = '<span class="chip stopped">' + ranKey + " ran, then stopped</span>"; stoppedAt = i; }
+      else if (ran) chip = '<span class="chip ran">' + ranKey + " ran</span>";
       else if (has && stoppedAt > -1) chip = '<span class="chip skipped">' + handlerName + " skipped</span>";
       else if (has) chip = '<span class="chip">' + handlerName + " did not run</span>";
       else chip = '<span class="chip">no ' + handlerName + "</span>";
@@ -935,8 +952,10 @@ code, .el {
         note = r.isFn
           ? "React queues the updater. It will get the latest <code>" + esc(r.name) + "</code>, including earlier updates from this same click."
           : Object.is(r.prev, r.next)
-            ? "<code>" + esc(r.name) + "</code> is already " + esc(show1(r.next)) + ", so React can skip the re-render."
-            : "<code>" + esc(r.name) + "</code> will change from <b>" + esc(show1(r.prev)) + "</b> to <b>" + esc(show1(r.next)) + "</b>. The screen does not change yet: React schedules a re-render.";
+            ? isObj(r.next)
+              ? "This is <b>the same " + (Array.isArray(r.next) ? "array" : "object") + "</b> React already has for <code>" + esc(r.name) + "</code>, changed in place. React compares the old and new value with <code>Object.is</code>, sees the same one, and skips the update."
+              : "<code>" + esc(r.name) + "</code> is already " + esc(show1(r.next)) + ", so React can skip the re-render."
+            : "<code>" + esc(r.name) + "</code> will change from <b>" + esc(show1(r.prev)) + "</b> to <b>" + esc(show1(r.next)) + "</b>" + (isObj(r.next) ? " (a new " + (Array.isArray(r.next) ? "array" : "object") + ")" : "") + ". The screen does not change yet: React schedules a re-render.";
         cls = "k-state";
       } else if (r.type === "updater") {
         text = "React runs the updater for <code>" + esc(r.name) + "</code>: <b>" + esc(show1(r.prev)) + "</b> → <b>" + esc(show1(r.next)) + "</b>.";
@@ -951,6 +970,15 @@ code, .el {
       } else if (r.type === "render") {
         const firstTime = r.n === 1;
         text = "<code>" + esc(r.inst.label) + "</code> " + (firstTime ? "renders for the first time." : "re-renders (render #" + r.n + ").") + lineBtn(defLine(r.inst.comp));
+        const sameState = !firstTime && r.after && r.after.every((st, i) => r.before[i] && Object.is(r.before[i].value, st.value));
+        const askedHere = a.records.some((x) => x.type === "setState" && x.inst === r.inst);
+        if (sameState && askedHere) {
+          text = "<code>" + esc(r.inst.label) + "</code> runs once more to double-check (render #" + r.n + ")." + lineBtn(defLine(r.inst.comp));
+          note = "Its state is the same values as before, so React throws this render away. The screen does not change.";
+          items.push(stepLi("k-render", text, note, ""));
+          lastWasKey = false;
+          continue;
+        }
         note = firstTime ? "" : "React calls the " + esc(r.inst.comp) + " function again from the top, now with the new state.";
         items.push(stepLi("k-render", text, note, diffHtml(r)));
         lastWasKey = false;
@@ -969,22 +997,60 @@ code, .el {
     return '<ol class="steps">' + items.join("") + "</ol>" + tail;
   }
 
-  function show1(v) {
-    if (typeof v === "string") return JSON.stringify(v);
+  /* A JavaScript-looking literal: { id: 1, text: "Buy milk" } */
+  function lit(v) {
+    if (Array.isArray(v)) return "[" + v.map(lit).join(", ") + "]";
     if (typeof v === "function") return "function";
-    try { return JSON.stringify(v); } catch (e) { return String(v); }
+    if (v && typeof v === "object") return "{ " + Object.keys(v).map((k) => k + ": " + lit(v[k])).join(", ") + " }";
+    if (typeof v === "string") return JSON.stringify(v);
+    return String(v);
+  }
+
+  /* Short form for sentences: arrays become "[3 items]". */
+  function show1(v) {
+    if (Array.isArray(v)) return v.length ? "[" + v.length + (v.length === 1 ? " item]" : " items]") : "[]";
+    const s = lit(v);
+    return s.length > 48 ? "{ " + Object.keys(v).length + " fields }" : s;
+  }
+
+  const isObj = (v) => v !== null && typeof v === "object";
+
+  /* Per-item changes between two arrays, matched by id when items have one. */
+  function arrayDiff(prev, next) {
+    const keyOf = (x, i) => (isObj(x) && "id" in x ? "id:" + x.id : "i:" + i);
+    const before = new Map(prev.map((x, i) => [keyOf(x, i), x]));
+    const rows = next.map((x, i) => {
+      const k = keyOf(x, i);
+      if (!before.has(k)) return '<li class="add"><b>+</b> added ' + esc(lit(x)) + "</li>";
+      const old = before.get(k);
+      before.delete(k);
+      if (old === x) return '<li class="same"><b>=</b> same object reused: ' + esc(lit(x)) + "</li>";
+      const changes = isObj(x) && isObj(old)
+        ? Object.keys(x).filter((f) => !Object.is(x[f], old[f])).map((f) => f + ": " + lit(old[f]) + " → " + lit(x[f])).join(", ")
+        : lit(old) + " → " + lit(x);
+      return '<li class="chg"><b>~</b> new object' + (changes ? " (" + esc(changes) + ")" : "") + ": " + esc(lit(x)) + "</li>";
+    });
+    for (const old of before.values()) rows.push('<li class="del"><b>−</b> removed ' + esc(lit(old)) + "</li>");
+    return '<ul class="adiff">' + rows.join("") + "</ul>";
   }
 
   function diffHtml(r) {
     if (!r.after || !r.after.length) return "";
-    const parts = r.after.map((st, i) => {
+    const parts = [];
+    const lists = [];
+    r.after.forEach((st, i) => {
       const old = r.before[i];
-      if (r.n > 1 && old && !Object.is(old.value, st.value)) {
-        return '<span class="changed">' + esc(st.name) + ": <s>" + esc(show1(old.value)) + "</s> → " + esc(show1(st.value)) + "</span>";
+      const changed = r.n > 1 && old && !Object.is(old.value, st.value);
+      if (changed && Array.isArray(old.value) && Array.isArray(st.value)) {
+        parts.push('<span class="changed">' + esc(st.name) + ": new array, " + esc(show1(old.value)) + " → " + esc(show1(st.value)) + "</span>");
+        lists.push(arrayDiff(old.value, st.value));
+      } else if (changed) {
+        parts.push('<span class="changed">' + esc(st.name) + ": <s>" + esc(lit(old.value)) + "</s> → " + esc(lit(st.value)) + "</span>");
+      } else {
+        parts.push("<span>" + esc(st.name) + ": " + esc(show1(st.value)) + "</span>");
       }
-      return "<span>" + esc(st.name) + ": " + esc(show1(st.value)) + "</span>";
     });
-    return '<div class="diff">' + parts.join("") + "</div>";
+    return '<div class="diff">' + parts.join("") + "</div>" + lists.join("");
   }
 
   function renderStates(a) {
@@ -1000,7 +1066,13 @@ code, .el {
     }
     box.innerHTML = live.map((i) => {
       const vals = i.states.length
-        ? i.states.map((st) => '<span class="' + (changed.has(i.label + ":" + st.name) ? "changed" : "") + '">' + esc(st.name) + " = " + esc(show1(st.value)) + "</span>").join("")
+        ? i.states.map((st) => {
+            const cls = (changed.has(i.label + ":" + st.name) ? "changed" : "") + (Array.isArray(st.value) && st.value.length ? " block" : "");
+            const text = Array.isArray(st.value) && st.value.length
+              ? st.name + " = [\n" + st.value.map((x) => "  " + lit(x)).join(",\n") + "\n]"
+              : st.name + " = " + lit(st.value);
+            return '<span class="' + cls + '">' + esc(text) + "</span>";
+          }).join("")
         : "<em>no state</em>";
       const just = a && a.rendered && a.rendered.has(i) && !a.mount;
       return '<div class="inst' + (just ? " just-rendered" : "") + '"><span class="inst-name">' + esc(i.label) + '</span><span class="inst-renders">' + i.renders + (i.renders === 1 ? " render" : " renders") + (just ? " · just now" : "") + '</span><div class="vals">' + vals + "</div></div>";

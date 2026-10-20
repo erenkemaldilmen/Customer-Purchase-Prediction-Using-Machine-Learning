@@ -227,6 +227,8 @@ h1 {
 .stage .todos label { flex: 1; display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .stage .todos li.done label { color: var(--muted); text-decoration: line-through; }
 .stage .todos > button { margin-right: 6px; }
+.stage .cart li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; background: var(--surface); }
+.stage .cart span { flex: 1; font-weight: 500; font-variant-numeric: tabular-nums; }
 .stage .liked { color: var(--stop); border-color: var(--stop); background: var(--stop-soft); }
 .stage .badge { margin-left: auto; font-size: 0.85rem; color: var(--muted); padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
 .stage[data-ex="quick"] > div > div {
@@ -316,6 +318,8 @@ h1 {
 .adiff .chg { background: var(--state-soft); color: var(--fg); }
 .adiff .chg b { color: var(--state); }
 .adiff .same { color: var(--muted); }
+.adiff .mut { background: var(--signal-soft); color: var(--fg); }
+.adiff .mut b { color: var(--signal); }
 .skipnote { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); color: var(--muted); font-size: 0.875rem; }
 
 /* State panel */
@@ -689,7 +693,7 @@ code, .el {
       React.useEffect(() => () => { inst.mounted = false; }, []);
       inst.renders += 1;
       inst.hook = 0;
-      const r = { type: "render", inst, n: inst.renders, before: inst.states.map((x) => ({ ...x })), after: null };
+      const r = { type: "render", inst, n: inst.renders, before: inst.states.map((x) => ({ ...x })), beforeDeep: inst.deep || [], after: null };
       rec(r);
       renderStack.push(inst);
       try {
@@ -697,11 +701,18 @@ code, .el {
       } finally {
         renderStack.pop();
         r.after = inst.states.map((x) => ({ ...x }));
+        inst.deep = inst.states.map((x) => snapshot(x.value));
       }
     }
     Traced.displayName = name;
     wrapped.set(C, Traced);
     return Traced;
+  }
+
+  /* A frozen copy of a value as it looked at the end of a render. */
+  function snapshot(v) {
+    if (v === null || typeof v !== "object") return v;
+    try { return structuredClone(v); } catch (e) { return v; }
   }
 
   /* useState that reports every set call, updater run and lazy initializer. */
@@ -1016,21 +1027,33 @@ code, .el {
   const isObj = (v) => v !== null && typeof v === "object";
 
   /* Per-item changes between two arrays, matched by id when items have one. */
-  function arrayDiff(prev, next) {
+  /* Per-item changes between two arrays, matched by id when items have one.
+     prevDeep is how the old array looked at the end of the last render, so items
+     that were changed in place since then can be called out. */
+  function arrayDiff(prev, next, prevDeep) {
     const keyOf = (x, i) => (isObj(x) && "id" in x ? "id:" + x.id : "i:" + i);
-    const before = new Map(prev.map((x, i) => [keyOf(x, i), x]));
+    const refs = new Map(prev.map((x, i) => [keyOf(x, i), x]));
+    const deep = new Map((Array.isArray(prevDeep) ? prevDeep : prev).map((x, i) => [keyOf(x, i), x]));
+    const fieldChanges = (from, to) => isObj(to) && isObj(from)
+      ? Object.keys(to).filter((f) => !Object.is(to[f], from[f])).map((f) => f + ": " + lit(from[f]) + " → " + lit(to[f])).join(", ")
+      : lit(from) + " → " + lit(to);
     const rows = next.map((x, i) => {
       const k = keyOf(x, i);
-      if (!before.has(k)) return '<li class="add"><b>+</b> added ' + esc(lit(x)) + "</li>";
-      const old = before.get(k);
-      before.delete(k);
-      if (old === x) return '<li class="same"><b>=</b> same object reused: ' + esc(lit(x)) + "</li>";
-      const changes = isObj(x) && isObj(old)
-        ? Object.keys(x).filter((f) => !Object.is(x[f], old[f])).map((f) => f + ": " + lit(old[f]) + " → " + lit(x[f])).join(", ")
-        : lit(old) + " → " + lit(x);
+      if (!deep.has(k)) {
+        if (refs.get(k) === x) return '<li class="mut"><b>!</b> shows up only now: it was pushed into the old array in place earlier, so React never saw it: ' + esc(lit(x)) + "</li>";
+        return '<li class="add"><b>+</b> added ' + esc(lit(x)) + "</li>";
+      }
+      const old = refs.get(k);
+      const was = deep.get(k);
+      deep.delete(k);
+      if (old === x) {
+        if (lit(was) !== lit(x)) return '<li class="mut"><b>!</b> same object, but it was changed in place earlier (' + esc(fieldChanges(was, x)) + "). React never saw that change until now: " + esc(lit(x)) + "</li>";
+        return '<li class="same"><b>=</b> same object reused: ' + esc(lit(x)) + "</li>";
+      }
+      const changes = fieldChanges(was, x);
       return '<li class="chg"><b>~</b> new object' + (changes ? " (" + esc(changes) + ")" : "") + ": " + esc(lit(x)) + "</li>";
     });
-    for (const old of before.values()) rows.push('<li class="del"><b>−</b> removed ' + esc(lit(old)) + "</li>");
+    for (const old of deep.values()) rows.push('<li class="del"><b>−</b> removed ' + esc(lit(old)) + "</li>");
     return '<ul class="adiff">' + rows.join("") + "</ul>";
   }
 
@@ -1042,8 +1065,9 @@ code, .el {
       const old = r.before[i];
       const changed = r.n > 1 && old && !Object.is(old.value, st.value);
       if (changed && Array.isArray(old.value) && Array.isArray(st.value)) {
-        parts.push('<span class="changed">' + esc(st.name) + ": new array, " + esc(show1(old.value)) + " → " + esc(show1(st.value)) + "</span>");
-        lists.push(arrayDiff(old.value, st.value));
+        const was = Array.isArray(r.beforeDeep[i]) ? r.beforeDeep[i] : old.value;
+        parts.push('<span class="changed">' + esc(st.name) + ": new array, " + esc(show1(was)) + " → " + esc(show1(st.value)) + "</span>");
+        lists.push(arrayDiff(old.value, st.value, r.beforeDeep[i]));
       } else if (changed) {
         parts.push('<span class="changed">' + esc(st.name) + ": <s>" + esc(lit(old.value)) + "</s> → " + esc(lit(st.value)) + "</span>");
       } else {

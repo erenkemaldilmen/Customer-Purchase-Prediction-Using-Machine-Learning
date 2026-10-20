@@ -11,6 +11,12 @@ const dir = __dirname;
 // Newest topic first; the first entry is the default tab.
 const exercises = [
   {
+    id: "cart",
+    tab: "In place vs copy · Topic 9",
+    file: "09-cart.jsx",
+    hint: "Try Q4 and Q5: click <b>+1 in place</b> on Hat, then <b>+1</b> on Shoe. Watch what happens to Hat. Press <b>Reset</b> to start over.",
+  },
+  {
     id: "todos",
     tab: "Immutability · Topic 9",
     file: "09-todo-list.jsx",

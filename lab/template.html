@@ -229,6 +229,9 @@ h1 {
 .stage .todos > button { margin-right: 6px; }
 .stage .cart li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; background: var(--surface); }
 .stage .cart span { flex: 1; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stage .dashboard { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stage .dashboard h2, .stage .dashboard p { flex-basis: 100%; margin: 0; }
+.stage .dashboard h2 { font-family: var(--font-display); }
 .stage .liked { color: var(--stop); border-color: var(--stop); background: var(--stop-soft); }
 .stage .badge { margin-left: auto; font-size: 0.85rem; color: var(--muted); padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
 .stage[data-ex="quick"] > div > div {
@@ -297,6 +300,7 @@ h1 {
 .step.k-log::before { background: var(--signal-soft); border-color: var(--signal); color: var(--signal); }
 .step.k-state::before, .step.k-lazy::before { background: var(--state-soft); border-color: var(--state); color: var(--state); }
 .step.k-render::before { background: var(--render-soft); border-color: var(--render); color: var(--render); }
+.step.k-commit::before { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .diff { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .diff span {
   font: 400 0.8rem var(--font-mono);
@@ -636,12 +640,16 @@ code, .el {
   }
 
   /* Wrap function props passed to components (onAddToCart, onSearch...). */
+  const propWrappers = new WeakMap(); // same original function → same wrapper, so prop identity is preserved
   function wrapProp(comp, key, fn, line) {
-    return function () {
+    if (propWrappers.has(fn)) return propWrappers.get(fn);
+    const w = function () {
       const args = Array.prototype.slice.call(arguments);
       rec({ type: "propcall", comp, key, fnName: fn.name, args, line });
       return fn.apply(this, arguments);
     };
+    propWrappers.set(fn, w);
+    return w;
   }
 
   const isHandler = (k, v) => /^on[A-Z]/.test(k) && typeof v === "function";
@@ -665,6 +673,7 @@ code, .el {
         p[k] = v;
       }
     }
+    if (compName) p.__simOwner = renderStack[renderStack.length - 1] || null;
     if (typeof type === "string") {
       if (handlers.length) p["data-sim-on"] = handlers.join(" ");
       if (line) p["data-sim-line"] = line;
@@ -682,7 +691,8 @@ code, .el {
   function wrapComp(C) {
     if (wrapped.has(C)) return wrapped.get(C);
     const name = C.name || "Component";
-    function Traced(props) {
+    function Traced(allProps) {
+      const { __simOwner, ...props } = allProps;
       const idRef = React.useRef(null);
       if (idRef.current === null) {
         instSeq[name] = (instSeq[name] || 0) + 1;
@@ -693,7 +703,13 @@ code, .el {
       React.useEffect(() => () => { inst.mounted = false; }, []);
       inst.renders += 1;
       inst.hook = 0;
-      const r = { type: "render", inst, n: inst.renders, before: inst.states.map((x) => ({ ...x })), beforeDeep: inst.deep || [], after: null };
+      inst.owner = __simOwner || null;
+      const changedProps = inst.lastProps
+        ? Object.keys({ ...inst.lastProps, ...props }).filter((k) => k !== "children" && !Object.is(inst.lastProps[k], props[k]))
+          .map((k) => ({ name: k, from: inst.lastProps[k], to: props[k] }))
+        : [];
+      inst.lastProps = props;
+      const r = { type: "render", inst, n: inst.renders, before: inst.states.map((x) => ({ ...x })), beforeDeep: inst.deep || [], after: null, changedProps };
       rec(r);
       renderStack.push(inst);
       try {
@@ -803,6 +819,41 @@ code, .el {
     }
   }
   const stage = $("stage");
+
+  /* Commit tracking: what React actually changed in the page after rendering. */
+  let domChanges = [];
+  const observer = new MutationObserver((list) => { domChanges.push(...list); });
+  function takeDomChanges() {
+    const list = domChanges.concat(observer.takeRecords());
+    domChanges = [];
+    const out = [];
+    const attrs = new Map(); // element + attribute → value before the first change
+    const clean = (v) => v.split(" ").filter((c) => c && c !== "flash" && c !== "pulse").join(" ");
+    for (const m of list) {
+      if (m.type === "attributes") {
+        if (m.attributeName.startsWith("data-sim")) continue;
+        let byName = attrs.get(m.target);
+        if (!byName) attrs.set(m.target, (byName = new Map()));
+        if (!byName.has(m.attributeName)) {
+          byName.set(m.attributeName, m.oldValue || "");
+          out.push({ attr: true, target: m.target, name: m.attributeName });
+        }
+      } else if (m.type === "characterData") {
+        out.push("text in " + describe(m.target.parentElement).replace(/ “.*”$/, "") + ": " + JSON.stringify(m.oldValue) + " → " + JSON.stringify(m.target.data));
+      } else if (m.type === "childList") {
+        m.addedNodes.forEach((n) => out.push("added " + (n.nodeType === 1 ? describe(n) : "text " + JSON.stringify(n.textContent))));
+        m.removedNodes.forEach((n) => out.push("removed " + (n.nodeType === 1 ? describe(n) : "text " + JSON.stringify(n.textContent))));
+      }
+    }
+    return out.map((c) => {
+      if (!c.attr) return c;
+      const was = attrs.get(c.target).get(c.name);
+      const now = c.target.getAttribute(c.name) || "";
+      const a = c.name === "class" ? clean(was) : was;
+      const b = c.name === "class" ? clean(now) : now;
+      return a === b ? null : c.name + " on " + describe(c.target).replace(/ “.*”$/, "") + ": " + JSON.stringify(a) + " → " + JSON.stringify(b);
+    }).filter(Boolean);
+  }
   stage.addEventListener("click", onNative, true);
   stage.addEventListener("keydown", onNative, true);
   stage.addEventListener("submit", onNative, true);
@@ -851,6 +902,7 @@ code, .el {
       else if (seg && r.type === "handler") seg.ran.set(r.node, r.key);
       else if (seg && r.type === "stop") seg.stopNode = r.node;
     }
+    a.commit = a.mount ? null : takeDomChanges();
     a.title = titleFor(a);
     a.lines = linesFor(a);
     const rendered = new Set(a.records.filter((r) => r.type === "render").map((r) => r.inst));
@@ -990,7 +1042,14 @@ code, .el {
           lastWasKey = false;
           continue;
         }
-        note = firstTime ? "" : "React calls the " + esc(r.inst.comp) + " function again from the top, now with the new state.";
+        if (firstTime) note = "";
+        else if (askedHere) note = "Why: its own state changed. React calls the " + esc(r.inst.comp) + " function again from the top, now with the new state.";
+        else if (r.inst.owner && a.rendered.has(r.inst.owner)) {
+          note = "Why: its parent <code>" + esc(r.inst.owner.label) + "</code> re-rendered. When a component re-renders, React re-renders every component inside it too, ";
+          note += r.changedProps.length
+            ? "and here its props changed: " + r.changedProps.map((c) => "<code>" + esc(c.name) + "</code> " + esc(show1(c.from)) + " → " + esc(show1(c.to))).join(", ") + "."
+            : "<b>even though its props are exactly the same</b>.";
+        } else note = "React calls the " + esc(r.inst.comp) + " function again from the top.";
         items.push(stepLi("k-render", text, note, diffHtml(r)));
         lastWasKey = false;
         continue;
@@ -1001,9 +1060,20 @@ code, .el {
       lastWasKey = r.type === "key";
       if (text) items.push(stepLi(cls, text, note, ""));
     }
+    if (a.commit && a.rendered && a.rendered.size) {
+      const list = a.commit;
+      const text = list.length
+        ? "React updates the page (the <b>commit</b>): " + list.length + (list.length === 1 ? " change." : " changes.")
+        : "React compares the new result with what's on the page, finds <b>nothing to change</b>, and leaves the page alone.";
+      const note = list.length
+        ? "Rendering only calculated what the page should look like. These are the only things React actually touched:"
+        : "Rendering is not the same as changing the page: React ran the components, but the page is already correct.";
+      const extra = list.length ? '<ul class="adiff">' + list.map((c) => '<li class="chg"><b>✎</b> ' + esc(c) + "</li>").join("") + "</ul>" : "";
+      items.push(stepLi("k-commit", text, note, extra));
+    }
     let tail = "";
     if (a.notRendered && a.notRendered.length) {
-      tail = '<p class="skipnote">Did not re-render: ' + a.notRendered.map((l) => "<code>" + esc(l) + "</code>").join(", ") + ". Only the component whose state changed renders again, plus anything inside it.</p>";
+      tail = '<p class="skipnote">Did not re-render: ' + a.notRendered.map((l) => "<code>" + esc(l) + "</code>").join(", ") + ". Only the component whose state changed re-renders, plus every component inside it.</p>";
     }
     return '<ol class="steps">' + items.join("") + "</ol>" + tail;
   }
@@ -1191,6 +1261,7 @@ code, .el {
     rootEl = document.createElement("div");
     stage.appendChild(rootEl);
     root = ReactDOM.createRoot(rootEl);
+    observer.disconnect();
     current = { records: [], mount: true };
     try {
       const app = ex.mount(requireShim, at);
@@ -1199,6 +1270,8 @@ code, .el {
       stage.innerHTML = '<p class="error">This example failed to start: ' + esc(err.message) + "</p>";
     }
     finish();
+    domChanges = [];
+    observer.observe(rootEl, { subtree: true, childList: true, characterData: true, characterDataOldValue: true, attributes: true, attributeOldValue: true });
   }
 
   $("reset").addEventListener("click", mount);

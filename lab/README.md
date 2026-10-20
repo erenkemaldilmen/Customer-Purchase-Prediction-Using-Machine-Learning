@@ -2,7 +2,9 @@
 
 The interactive page that runs each practice exercise and traces what happens:
 clicks and bubbling, handlers, `stopPropagation` / `preventDefault`, function
-props called by children, `useState` set calls, re-renders, and `console.log`.
+props called by children, `useState` set calls and updaters, re-renders and why
+they happened, array items added / replaced / changed in place, what React
+actually changed in the page (the commit), and `console.log`.
 
 Published at: https://claude.ai/artifact/7tL6uABSdWPwXt6U38FCAw
 

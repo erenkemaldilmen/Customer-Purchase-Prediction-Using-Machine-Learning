@@ -11,6 +11,12 @@ const dir = __dirname;
 // Newest topic first; the first entry is the default tab.
 const exercises = [
   {
+    id: "dashboard",
+    tab: "Render cycle · Topic 10",
+    file: "10-dashboard.jsx",
+    hint: "Answer the questions in the chat first. Then click the <b>Clicked</b> button a couple of times, then <b>Toggle theme</b>, and compare which components re-render and what the page changes.",
+  },
+  {
     id: "cart",
     tab: "In place vs copy · Topic 9",
     file: "09-cart.jsx",
